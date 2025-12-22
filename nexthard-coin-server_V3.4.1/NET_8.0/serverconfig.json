@@ -1,0 +1,9 @@
+{
+  "ServerConfig": {
+    "Port": "5000",
+    "AllowedOrigins": [
+      "http://localhost:3000"
+    ],
+    "AutoClearingCashboxLevels": false
+  }
+}

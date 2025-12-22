@@ -1,0 +1,42 @@
+[
+  {
+    "Value": 500,
+    "CountryCode": "EUR",
+    "StoredInCashbox": 2
+  },
+  {
+    "Value": 1000,
+    "CountryCode": "EUR",
+    "StoredInCashbox": 2
+  },
+  {
+    "Value": 2000,
+    "CountryCode": "EUR",
+    "StoredInCashbox": 4
+  },
+  {
+    "Value": 5000,
+    "CountryCode": "EUR",
+    "StoredInCashbox": 0
+  },
+  {
+    "Value": 10000,
+    "CountryCode": "EUR",
+    "StoredInCashbox": 0
+  },
+  {
+    "Value": 20000,
+    "CountryCode": "EUR",
+    "StoredInCashbox": 0
+  },
+  {
+    "Value": 50000,
+    "CountryCode": "EUR",
+    "StoredInCashbox": 0
+  },
+  {
+    "Value": 0,
+    "CountryCode": "UNKNOWN",
+    "StoredInCashbox": 0
+  }
+]

@@ -1,0 +1,107 @@
+//------------------------------------------------------------//
+		Project nexthard coin server 
+
+Objectif: A server that provides endpoints for mqtt requests aimed to utilize money pay-in/pay-out device.
+
+
+to do: 
+1.Create a robust system that boots up required dependancies in case of failure.  in progress
+2.An asynchronous system that accept execute and broadcasts all actions and events.  ok
+3.system that logs all transactions happened.   ok
+4.deadlock alivelock free system.  ok
+
+
+---- next upgrade
+*update environment login info on update commande.
+*listen for open connexion after restart.
+*code optimizing.
+
+
+
+******* ITL rest api *******
+
+1) Authenticate: [POST]
+endpoint: http://localhost:5000/api/Users/Authenticate
+
+body: 	
+{
+"Username": "admin",
+"Password": "password"
+}
+
+output:  Bearer Token
+
+
+
+
+2) OpenConnection [POST] 
+
+-------- SMART-COIN-SYSTEM ------
+endpoint: http://localhost:5000/api/CashDevice/OpenConnection
+body: 
+	{
+	  "ComPort": "/dev/coins",
+	  "SspAddress": 16,
+	  "LogFilePath": "/home/ahmed/Desktop/Projects/2025/nexthard-coin-server/SmartCoin_Log.log",
+	  "SetInhibits": [
+		        ],
+	  "SetFeederRoutes": [
+	    { "Denomination": "5 EUR", "Route": 7 },  
+	    { "Denomination": "10 EUR", "Route": 7 },
+	    { "Denomination": "20 EUR", "Route": 7 },
+	    { "Denomination": "50 EUR", "Route": 7 },
+	    { "Denomination": "100 EUR", "Route": 7 },
+	    { "Denomination": "200 EUR", "Route": 7 }
+	  ],
+	  "SetCashBoxPayoutLimit": [100, 50, 40, 30, 20, 10, 5, 0],
+	  "EnableAcceptor": true,
+	  "EnablePayout": true
+	}
+---- SPECTRAL-NV22  ------
+{
+                "ComPort": "/dev/cash",
+                "SspAddress": 0,
+                "LogFilePath": "/home/ahmed/Desktop/Projects/2025/nexthard-coin-server/SmartCash_Log.log",
+                "SetInhibits": [
+                ],
+                "SetRoutes": [
+                    { "Denomination": "500 EUR", "Route": 1 },
+                    { "Denomination": "1000 EUR", "Route": 1 },
+                    { "Denomination": "2000 EUR", "Route": 1 },
+                    { "Denomination": "5000 EUR", "Route": 1 },
+                    { "Denomination": "10000 EUR", "Route": 0 },
+                    { "Denomination": "20000 EUR", "Route": 0 },
+                    { "Denomination": "50000 EUR", "Route": 0 }
+                ],
+                "EnableAcceptor": true,
+                "EnableAutoAcceptEscrow": true,
+                "EnablePayout": true
+            }
+
+*****Routes:*****
+• Cashbox = 0
+• Recycler = 1
+• Payout = 7 (nv150 smart coin)
+
+Authorisation: BearerToken
+
+output: connection response
+
+
+
+
++++++ what i did today
+
+set up communication system using the itl api
+
+built an initialization  setup that always generates a new token 
+
+create communication with machine if not existant
+
+prepared multiple endpoints for easy use request and data 
+
+mqtt integration
+
+full response mqtt and terminal
+
+graceful error handling

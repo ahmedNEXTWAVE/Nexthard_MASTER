@@ -1,0 +1,27 @@
+[
+  {
+    "Value": 500,
+    "CountryCode": "GBP",
+    "StoredInCashbox": 1
+  },
+  {
+    "Value": 1000,
+    "CountryCode": "GBP",
+    "StoredInCashbox": 0
+  },
+  {
+    "Value": 2000,
+    "CountryCode": "GBP",
+    "StoredInCashbox": 0
+  },
+  {
+    "Value": 5000,
+    "CountryCode": "GBP",
+    "StoredInCashbox": 0
+  },
+  {
+    "Value": 0,
+    "CountryCode": "UNKNOWN",
+    "StoredInCashbox": 0
+  }
+]

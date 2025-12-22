@@ -1,0 +1,16 @@
+{
+  "name": "nexthard-coin-server",
+  "version": "1.0.0",
+  "main": "nexthard-server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "dotenv": "^17.2.2",
+    "mqtt": "^5.14.1",
+    "request": "^2.88.2"
+  }
+}
