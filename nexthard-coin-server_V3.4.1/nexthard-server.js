@@ -4,7 +4,7 @@ const { init, open_connection, order } = require("./cash-device.js");
 require("dotenv").config();
 const host = process.env.host;
 const topic = (process.env.topic || "nexthard").trim() + "/action";
-var conn_opened=true;
+var conn_opened = true;
 
 // TOKEN REFRESH LOGIC
 let tokenRefreshTimer = null;
@@ -15,33 +15,37 @@ let cashEventIntervals = [];
 let isShuttingDown = false;
 
 async function refreshToken() {
-    console.log('Refreshing token...');
-    
-    try {
-        const response = await init();
-        if (response === -111) {
-            throw new Error('Refresh failed');
-        }
-        console.log('Token refreshed successfully');
-        startTokenRefreshTimer(); // Reset the timer
-    } catch (error) {
-        console.error('Token refresh failed, retrying in 1 minute:', error);
-        setTimeout(refreshToken, 60000); // Retry after 1 minute
+  console.log("Refreshing token...");
+
+  try {
+    const response = await init();
+    if (response === -111) {
+      throw new Error("Refresh failed");
     }
+    console.log("Token refreshed successfully");
+    startTokenRefreshTimer(); // Reset the timer
+  } catch (error) {
+    console.error("Token refresh failed, retrying in 1 minute:", error);
+    setTimeout(refreshToken, 60000); // Retry after 1 minute
+  }
 }
 
 function startTokenRefreshTimer() {
-    // Clear any existing timer
-    if (tokenRefreshTimer) {
-        clearTimeout(tokenRefreshTimer);
-    }
-    
-    // Set new timer
-    tokenRefreshTimer = setTimeout(refreshToken, TOKEN_REFRESH_TIME);
-    console.log(`Token refresh scheduled in ${TOKEN_REFRESH_TIME / (24 * 60 * 60 * 1000)} days`);
+  // Clear any existing timer
+  if (tokenRefreshTimer) {
+    clearTimeout(tokenRefreshTimer);
+  }
+
+  // Set new timer
+  tokenRefreshTimer = setTimeout(refreshToken, TOKEN_REFRESH_TIME);
+  console.log(
+    `Token refresh scheduled in ${
+      TOKEN_REFRESH_TIME / (24 * 60 * 60 * 1000)
+    } days`
+  );
 }
 
-//********/  
+//********/
 
 /**
  * Sleep helper
@@ -73,11 +77,10 @@ async function listenCashEvents(deviceID) {
   cashEventIntervals.push(intervalId);
 }
 
-
 // shutdown handle
 async function gracefulShutdown(signal) {
   if (isShuttingDown) {
-    console.log('Shutdown already in progress...');
+    console.log("Shutdown already in progress...");
     return;
   }
 
@@ -87,7 +90,7 @@ async function gracefulShutdown(signal) {
   // Create a timeout promise
   const shutdownTimeout = new Promise((resolve) => {
     setTimeout(() => {
-      console.log('Shutdown timeout reached (5s), forcing exit...');
+      console.log("Shutdown timeout reached (5s), forcing exit...");
       resolve();
     }, 10000);
   });
@@ -96,8 +99,8 @@ async function gracefulShutdown(signal) {
   const shutdownProcess = new Promise(async (resolve) => {
     try {
       // 1. Clear all intervals
-      console.log('Clearing intervals...');
-      cashEventIntervals.forEach(intervalId => clearInterval(intervalId));
+      console.log("Clearing intervals...");
+      cashEventIntervals.forEach((intervalId) => clearInterval(intervalId));
       cashEventIntervals = [];
 
       // 2. Clear token refresh timer
@@ -107,28 +110,36 @@ async function gracefulShutdown(signal) {
       }
 
       // 3. Disconnect devices
-      console.log('Disconnecting devices...');
+      console.log("Disconnecting devices...");
       try {
         await Promise.all([
-          order('DISCONNECTDEVICE', {}, `SMART_COIN_SYSTEM-${process.env.coin_port}`),
-          order('DISCONNECTDEVICE', {}, `SPECTRAL_PAYOUT-${process.env.cash_port}`)
+          order(
+            "DISCONNECTDEVICE",
+            {},
+            `SMART_COIN_SYSTEM-${process.env.coin_port}`
+          ),
+          order(
+            "DISCONNECTDEVICE",
+            {},
+            `SPECTRAL_PAYOUT-${process.env.cash_port}`
+          ),
         ]);
-        console.log('Devices disconnected successfully');
+        console.log("Devices disconnected successfully");
       } catch (err) {
-        console.error('Error disconnecting devices:', err);
+        console.error("Error disconnecting devices:", err);
       }
 
       // 4. Close MQTT connection
-      console.log('Closing MQTT connection...');
+      console.log("Closing MQTT connection...");
       if (mqttClient && mqttClient.connected) {
         mqttClient.end(false, {}, () => {
-          console.log('MQTT connection closed');
+          console.log("MQTT connection closed");
         });
       }
 
       resolve();
     } catch (error) {
-      console.error('Error during shutdown:', error);
+      console.error("Error during shutdown:", error);
       resolve();
     }
   });
@@ -136,14 +147,14 @@ async function gracefulShutdown(signal) {
   // Wait for either shutdown completion or timeout
   await Promise.race([shutdownProcess, shutdownTimeout]);
 
-  console.log('Shutdown complete. Exiting...');
+  console.log("Shutdown complete. Exiting...");
   process.exit(0);
 }
 
 // Register shutdown handlers
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-process.on('SIGUSR2', () => gracefulShutdown('SIGUSR2')); // nodemon restart
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+process.on("SIGUSR2", () => gracefulShutdown("SIGUSR2")); // nodemon restart
 
 async function main() {
   // Keep trying to init() every 10 seconds until it succeeds
@@ -161,33 +172,45 @@ async function main() {
     } catch (e) {
       console.error("Subscribe exception:", e);
     }
-    
   });
 
   while (true) {
-    if (isShuttingDown) break; // Stop initialization if shutting down
-    
+    if (isShuttingDown) break;
+
+    let response;
     try {
       response = await init();
+      console.log(response);
     } catch (err) {
       console.error("init() threw an error:", err);
-      response = -111;
+      // If you really want retries even on thrown errors, set response here:
+      response = { token: null, error: err };
     }
 
-    if (response === -111) {
-      publish_event(`Unable to communicate with ITL api! Will retry in ${RETRY_INTERVAL_MS / 1000}s...`);
+    if (response.error && response.token === null) {
+      publish_event(
+        `Unable to communicate with ITL api! Will retry in ${
+          RETRY_INTERVAL_MS / 1000
+        }s...`
+      );
       console.error(
-        `Unable to communicate with ITL api! Will retry in ${RETRY_INTERVAL_MS / 1000}s...`
+        `Unable to communicate with ITL api! Will retry in ${
+          RETRY_INTERVAL_MS / 1000
+        }s...`
       );
       await sleep(RETRY_INTERVAL_MS);
-      continue; // try again
+      continue; // Try again
     }
 
-    // Success
-    console.log("Authenticated with ITL API.");
-    startTokenRefreshTimer();
-    // open connect on mqtt connect
-    await open_conn();
+    if (response.token && !response.error) {
+      console.log("Authenticated with ITL API.");
+      startTokenRefreshTimer();
+      // wait 2 seconds before opening connection
+      setTimeout(async () => {
+        await open_conn();
+      }, 2000);
+    }
+
     break;
   }
 
@@ -214,55 +237,71 @@ async function main() {
   // Actions Parser
   mqttClient.on("message", async (receivedtopic, payload) => {
     if (isShuttingDown) return; // Ignore messages during shutdown
-    
+
     try {
       // payload might be Buffer
       const json = JSON.parse(payload.toString());
       console.log("Received Message:", receivedtopic, json);
-      
-      // quick open logic
-      if(json.action.toUpperCase() === "QUICKCONNECT"){
-        await open_conn();
-        return ;
-      }
-      device= null;
 
-      if(json.device){
-      if(json.device.toUpperCase()==='COIN') device = `SMART_COIN_SYSTEM-${process.env.coin_port}`;
-      else if (json.device.toUpperCase()==='CASH') device = `SPECTRAL_PAYOUT-${process.env.cash_port}`;  
+      // quick open logic
+      if (json.action.toUpperCase() === "QUICKCONNECT") {
+        await open_conn();
+        return;
+      }
+      device = null;
+
+      if (json.device) {
+        if (json.device.toUpperCase() === "COIN")
+          device = `SMART_COIN_SYSTEM-${process.env.coin_port}`;
+        else if (json.device.toUpperCase() === "CASH")
+          device = `SPECTRAL_PAYOUT-${process.env.cash_port}`;
       }
       await order(json.action.toUpperCase(), json.data || {}, device);
     } catch (error) {
-      publish_event("Message handling error, Please verify your request structure!","/event_resp");
+      publish_event(
+        "Message handling error, Please verify your request structure!",
+        "/event_resp"
+      );
       console.error("Message handling error:", error);
     }
   });
 }
 
-async function open_conn(){
+async function open_conn() {
   // Proceed to open connection (once auth succeeded)
   try {
     var opened = await open_connection();
     console.log(opened);
     if (!opened.cash || !opened.coin) {
-      console.warn(`open_connection() to coin_device reported failure. Reattempting connexion! || ${opened.cash?'OK':'ERROR'} | ${opened.coin?'OK':'ERROR'}`);
-      await order('DISCONNECTDEVICE',{},`SMART_COIN_SYSTEM-${process.env.coin_port}`); // <---- added reconnect attempt 
-      await order('DISCONNECTDEVICE',{},`SPECTRAL_PAYOUT-${process.env.cash_port}`); 
+      console.warn(
+        `open_connection() to coin_device reported failure. Reattempting connexion! || ${
+          opened.cash ? "OK" : "ERROR"
+        } | ${opened.coin ? "OK" : "ERROR"}`
+      );
+      await order(
+        "DISCONNECTDEVICE",
+        {},
+        `SMART_COIN_SYSTEM-${process.env.coin_port}`
+      ); // <---- added reconnect attempt
+      await order(
+        "DISCONNECTDEVICE",
+        {},
+        `SPECTRAL_PAYOUT-${process.env.cash_port}`
+      );
       opened = await open_connection();
       console.log(opened);
-      if(!opened.cash || !opened.coin){
+      if (!opened.cash || !opened.coin) {
         console.warn("open_connection() reported failure. Unable to connect!");
-        conn_opened=false;
+        conn_opened = false;
         console.log(opened);
-        throw new Error('Error on establishing connection!');
+        throw new Error("Error on establishing connection!");
       }
     }
-    conn_opened=true;
+    conn_opened = true;
     // on conneciton attache listeners
 
-  listenCashEvents(`SMART_COIN_SYSTEM-${process.env.coin_port}`); 
-  listenCashEvents(`SPECTRAL_PAYOUT-${process.env.cash_port}`);
-
+    listenCashEvents(`SMART_COIN_SYSTEM-${process.env.coin_port}`);
+    listenCashEvents(`SPECTRAL_PAYOUT-${process.env.cash_port}`);
   } catch (err) {
     console.error("open_connection() threw an error:", err);
   }
@@ -273,7 +312,7 @@ main().catch((err) => {
 });
 
 // Event publisher
-function publish_event(event,channel='/event') {
+function publish_event(event, channel = "/event") {
   //console.log(event);
   mqttClient.publish(
     process.env.topic + channel,

@@ -1,4 +1,4 @@
----------**_ STARTUP GUIDE _**------------
+## Startup guide
 
 1. setup .env file:
    ---NEXTHARD-SERVER
