@@ -6,6 +6,8 @@ const { mqttClient } = require("./mqttClient.js");
 
 let token = "";
 let opened = { coin: false, cash: false };
+let rec_running = false,
+  reconnecting = true;
 let previous_coinlevels = null;
 let creditAccumulator = 0;
 let creditTimer = null;
@@ -43,14 +45,35 @@ function publish_response(event, message, device) {
 }
 
 function setEnvValue(key, value) {
-  const ENV_VARS = fs.readFileSync("./.env", "utf8").split(os.EOL);
+  const envPath = "./.env";
+  let fileContent = "";
 
-  const target = ENV_VARS.indexOf(
-    ENV_VARS.find((line) => line.match(new RegExp(key)))
-  );
+  try {
+    fileContent = fs.readFileSync(envPath, "utf8");
+  } catch {
+    // If .env does not exist yet, start from empty
+    fileContent = "";
+  }
 
-  ENV_VARS.splice(target, 1, `${key}=${value}`);
-  fs.writeFileSync("./.env", ENV_VARS.join(os.EOL));
+  const lines = fileContent.split(/\r?\n/);
+
+  // Match exact KEY=... at start of line
+  const regex = new RegExp(`^${key}=`);
+  let found = false;
+
+  const newLines = lines.map((line) => {
+    if (regex.test(line)) {
+      found = true;
+      return `${key}=${value}`;
+    }
+    return line;
+  });
+
+  if (!found) {
+    newLines.push(`${key}=${value}`);
+  }
+
+  fs.writeFileSync(envPath, newLines.join(os.EOL));
 }
 
 function requestPromise(options) {
@@ -83,7 +106,9 @@ function requestPromise(options) {
 }
 
 const init = async function (config = []) {
+  if (rec_running) return; //if is reconnecting stop access
   try {
+    rec_running = true;
     const options = {
       method: "POST",
       url: `${process.env.itl_url}/api/Users/Authenticate`,
@@ -118,9 +143,11 @@ const init = async function (config = []) {
     token = body.token;
     console.log("[TOKEN]:", token);
     setEnvValue("token", token);
-
+    rec_running = false;
+    reconnecting = false;
     return { token, error: null };
   } catch (error) {
+    rec_running = false;
     return {
       token: null,
       error,
@@ -209,6 +236,7 @@ const open_connection = async function (config1 = {}, config2 = {}) {
 
     // COIN DEVICE
     if (!opened.coin) {
+      console.log("Attempting to open connections to coin devices...");
       const coinBody = {
         ComPort: config1.com || process.env.coin_port || "/dev/coins",
         SspAddress: config1.addr || 16,
@@ -255,10 +283,12 @@ const open_connection = async function (config1 = {}, config2 = {}) {
     }
 
     // wait 3 seconds then open cash
-    delay(3000);
+    await delay(3000);
 
     // CASH DEVICE
+
     if (!opened.cash) {
+      console.log("Attempting to open connections to cash devices...");
       const cashBody = {
         ComPort: config2.com || process.env.cash_port || "/dev/cash",
         SspAddress: config2.addr || 0,
@@ -327,6 +357,12 @@ async function order(command, data = {}, deviceID = null) {
     throw new Error(
       "Authentication token not found. Please authenticate first."
     );
+  }
+  // incase if reconnection is needed (sdk server restarted)
+  if (reconnecting) {
+    console.log("Reconnecting to server...");
+    await init();
+    opened = { coin: false, cash: false };
   }
 
   const endpoints = {
@@ -947,18 +983,31 @@ async function order(command, data = {}, deviceID = null) {
 
     return response.body;
   } catch (error) {
-    console.error(
-      `[ERR] ${command} →`,
-      error.message || error,
-      ", [MSG] ",
-      msg,
-      ", [DEVICE] ",
-      deviceID
-    );
+    if (deviceID != null) {
+      console.error(
+        `[ERR] ${command} →`,
+        error.message || error,
+        ", [MSG] ",
+        msg,
+        ", [DEVICE] ",
+        deviceID
+      );
+    }
 
-    if (command === "PAYOUTMULTIPLEDENOMINATIONS" && msg == "BUSY") {
+    if (
+      command === "PAYOUTMULTIPLEDENOMINATIONS" &&
+      (msg === "BUSY" || error.message.includes("ESOCKETTIMEDOUT"))
+    ) {
       console.log("payout error");
       return { code: -2, id: deviceID };
+    }
+
+    if (
+      command === "GETDEVICESTATUS" &&
+      error.message.includes("ECONNREFUSED")
+    ) {
+      console.log("Device connection refused. Waiting reconnexion!");
+      reconnecting = true;
     }
 
     return -1;
@@ -1119,7 +1168,7 @@ const return_cash = async function (data = 0) {
       `SPECTRAL_PAYOUT-${process.env.cash_port}`
     );
 
-    delay(3000);
+    await delay(3000);
 
     let resp_coin = await executePayout(
       coinCounts,
@@ -1156,7 +1205,7 @@ const return_cash = async function (data = 0) {
             `SMART_COIN_SYSTEM-${process.env.coin_port}`
           );
 
-          delay(1000);
+          await delay(1000);
         }
       }
 
@@ -1174,7 +1223,7 @@ const return_cash = async function (data = 0) {
             `SPECTRAL_PAYOUT-${process.env.cash_port}`
           );
 
-          delay(1000);
+          await delay(1000);
         }
       }
 

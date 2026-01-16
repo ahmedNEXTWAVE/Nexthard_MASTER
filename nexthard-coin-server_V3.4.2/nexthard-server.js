@@ -299,6 +299,8 @@ async function open_conn() {
     }
     conn_opened = true;
     // on conneciton attache listeners
+    cashEventIntervals.forEach((intervalId) => clearInterval(intervalId));
+    cashEventIntervals = [];
 
     listenCashEvents(`SMART_COIN_SYSTEM-${process.env.coin_port}`);
     listenCashEvents(`SPECTRAL_PAYOUT-${process.env.cash_port}`);
