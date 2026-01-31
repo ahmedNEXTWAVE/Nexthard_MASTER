@@ -1,30 +1,10 @@
-//*** yaml config *///
-const fs = require("fs");
-const yaml = require("js-yaml");
-const path = require("path");
 require("dotenv").config();
-
-// Load config synchronously
-function loadConfig() {
-  try {
-    const configPath = path.join(__dirname, "../config.yaml");
-    const fileContents = fs.readFileSync(configPath, "utf8");
-    const config = yaml.load(fileContents);
-    return config;
-  } catch (e) {
-    console.error("Error reading YAML file:", e);
-    throw e;
-  }
-}
-
-// Load config at startup
-//const configs = loadConfig();
-//console.log("Config loaded:", configs);
 
 cardDispenser = cashValidators = null;
 
 const util = require("util");
 const _log = console.log;
+const { TPEclient } = require("./sumup.js");
 
 console.log = (...args) =>
   _log(`${new Date().toISOString()} ${util.format(...args)}`);
@@ -40,9 +20,15 @@ if (process.env.payout == false) {
   console.log("activating cashvalidator with payout");
 }
 if (process.env.stripe == true) {
+  0;
   console.log("activating stripe");
   const stripe = require("./stripe.js");
 }
+if (process.env.sumup == true) {
+  console.log("activating sumup");
+  TPEclient.initialize();
+}
+
 if (process.env.card_d == true) {
   console.log("activating card-dispenser");
   cardDispenser = require("./carddispenser.js");
@@ -117,6 +103,9 @@ mqttClient.on("message", (receivedtopic, payload) => {
           if (process.env.stripe == true) {
             // DISABLE STRIPE PAY - Q25
             stripe.processPayment("tmr_F8Lq0gRajiRxop", json.value);
+          }
+          if (process.env.sumup == true) {
+            TPEclient.createPayment(json.value, "CHF");
           }
           break;
 
@@ -236,6 +225,6 @@ function publish_cash(event) {
       if (error) {
         console.error("Publish cash error:", error);
       }
-    }
+    },
   );
 }

@@ -10,16 +10,18 @@ const mqttClient = mqtt.connect(connectUrl, {
   clean: true,
   connectTimeout: 4000,
   reconnectPeriod: 1000,
-  username: "playzwell",
-  password: "Citrec++",
+  username: process.env.mqtt_username,
+  password: process.env.mqtt_password,
 });
 
-function publish_response(event, message, device, pilot = false) {
+function publish_response(event, message, device, pilot = false, data = null) {
   var mqttData = {};
   // Modification lecteur nfc 04/10/2025 //
-  if (!pilot) mqttData = { device: device, event: event, value: message };
+  if (!pilot)
+    mqttData = { device: device, event: event, value: message, data: data };
 
-  if (pilot) mqttData = { device: device, event: event, code_rfid: message };
+  if (pilot)
+    mqttData = { device: device, event: event, code_rfid: message, data: data };
 
   mqttClient.publish(
     pilot ? process.env.topic_pilot + "/event" : process.env.topic + "/event",
@@ -30,7 +32,7 @@ function publish_response(event, message, device, pilot = false) {
       if (error) {
         console.error("Publish error:", error);
       }
-    }
+    },
   );
 }
 
